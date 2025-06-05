@@ -1,5 +1,8 @@
 /*
-This code implements a PID (Proportional-Integral-Derivative) controller simulation using p5.js. It visualizes a moving object that tracks a target position on a canvas using PID control. The user can adjust the PID parameters (P, I, D) using  sliders to observe their effects on the object's movement. Clicking the canvas changes the target position, and the object moves toward it with behavior influenced by the PID tuning.
+This code implements a PID (Proportional-Integral-Derivative) controller simulation using p5.js. 
+It visualizes a moving object that tracks a target position on a canvas using PID control. 
+The user can adjust the PID parameters (P, I, D) using  sliders to observe their effects on the object's movement. 
+Clicking the canvas changes the target position, and the object moves toward it with behavior influenced by the PID tuning.
 */
 
 
