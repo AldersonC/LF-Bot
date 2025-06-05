@@ -2,8 +2,9 @@
 ## -- The ultimate line following robot --
 ## Project Outline
 ### Algorithm
-- PID Exp.
-    - simulation: https://editor.p5js.org/chuan.me@gmail.com/sketches/WBlfHGd2m
+
+## Live Demo
+[Click to try the simulation](https://editor.p5js.org/aldersonchiu/full/ngBpZ4XMh)
 
 ## 🛠️ Work Log
 
