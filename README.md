@@ -66,7 +66,7 @@
 | ---------- | ------------------------------------------------------------------------------ | --------------------------- |
 | 2025-06-05 | Initialized PID simulator in p5.js                                             | Linked in Algorithm section |
 | 2025-06-12 | Made a new Simulation that self runs and outputs the best runs (best fitting) | Linked in Algorithm section |
-| 2025-07-03 | QTR Sensors are working and functional with digital pins on Arduino Uno 3     | Verified for line-following |
+| 2025-07-03 | QTR Sensors are working and functional with digital pins on Arduino Uno 3     | Verified for line-following, before the code wouldn't work because we had the wrong qtr sensor, ours is for digital signals only while our previous code used analog signals as output. After some Modifications of the code it finally worked. |
 
 ## Reference
 [To be added]
