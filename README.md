@@ -67,6 +67,7 @@
 | 2025-06-05 | Initialized PID simulator in p5.js                                             | Linked in Algorithm section |
 | 2025-06-12 | Made a new Simulation that self runs and outputs the best runs (best fitting) | Linked in Algorithm section |
 | 2025-07-03 | QTR Sensors are working and functional with digital pins on Arduino Uno 3     | Verified for line-following, before the code wouldn't work because we had the wrong qtr sensor, ours is for digital signals only while our previous code used analog signals as output. After some Modifications of the code it finally worked. |
+| 2025-07-12 | Problems | We ran into a big problem, our motors do not spin at the same rpm or speed, but the voltage input are both 2.5-2.7 volts, we changed our driver and the arduino board but it didn't help, it isn't the wire's problem because the voltage are the same | 
 
 ## Reference
 [To be added]
