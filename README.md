@@ -68,13 +68,17 @@
 | 2025-06-12 | Made a new Simulation that self runs and outputs the best runs (best fitting) | Linked in Algorithm section |
 | 2025-07-03 | QTR Sensors are working and functional with digital pins on Arduino Uno 3     | Verified for line-following, before the code wouldn't work because we had the wrong qtr sensor, ours is for digital signals only while our previous code used analog signals as output. After some Modifications of the code it finally worked. |
 | 2025-07-12 | Problems | We ran into a big problem, our motors do not spin at the same rpm or speed, but the voltage input are both 2.5-2.7 volts, we changed our driver and the arduino board but it didn't help, it isn't the wire's problem because the voltage are the same.  Heres a more detailed description : In our robotics project, we’re facing an issue where two DC motors, controlled by an Arduino and a TB6612FNG motor driver, don’t run at the same speed even with the same PWM signal. The robot was built to follow a line using a QTR-8RC sensor and PID control, but to troubleshoot :
+| 2025-07-17 | Found out what the problem is for our pin, qtr sensors and motors | So before we used all the pins in the digital area, but pin 0 and pin 1 are a bit different, if it is used with seiral then there will be signal interference and can lead to problems such as slower motor speeds and more. And the position error that could't calculate negative numbers is because of a slight bug |
+
 - we simplified the code to make both motors move forward at a fixed speed (e.g., PWM 150).
 - One assay, Roswell, we checked the motor voltages with a multimeter, and they’re the same.
 - We also replaced the wiring, motor driver, and Arduino, but the problem persists.
 - The speed difference makes the robot veer off course, which affects both our test and line-following modes.
 - We’ve ruled out sensor interference
 - Checked the power supply, and confirmed proper pin setup.
-- The issue might be due to motor differences or mechanical issues, but we’re running out of ideas to fix it. |
+- The issue might be due to motor differences or mechanical issues, but we’re running out of ideas to fix it.
+
+
 
 ## Reference
 [To be added]
