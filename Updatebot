@@ -1,0 +1,369 @@
+#include <QTRSensors.h>
+#include <SparkFun_TB6612.h>
+
+// QTR Sensor setup
+QTRSensors qtr;
+const uint8_t SensorCount = 6;
+uint16_t sensorValues[SensorCount];
+
+// Motor Pins
+#define AIN1 2  // Motor A input 1
+#define AIN2 4  // Motor A input 2
+#define BIN1 7  // Motor B input 1
+#define BIN2 1  // Motor B input 2
+#define PWMA 5  // Motor A PWM
+#define PWMB 6  // Motor B PWM
+#define STBY 3  // Standby pin
+
+// Motor offsets
+const int offsetA = 1;
+const int offsetB = 1;
+
+// Initialize motors
+Motor motor1 = Motor(AIN1, AIN2, PWMA, offsetA, STBY);
+Motor motor2 = Motor(BIN1, BIN2, PWMB, offsetB, STBY);
+
+// PID control parameters
+float Kp = 0.12;       // Proportional gain
+float Kd = 0;       // Derivative gain
+float Ki = 0;      // Integral gain
+int baseSpeed = 150 ;  // Base motor speed
+int maxSpeed = 160;   // Maximum motor speed
+float lastError = 0;
+float integral = 0;
+int status = 0; 
+unsigned long timeAttack = 0;
+int sCount = 0; 
+bool wasStraight = false; // Track previous straight line state
+int straightCounter = 0; // Count consecutive straight line iterations
+// int count = 0;
+int lineThreshold = 700;  // Threshold for detecting white (calibrated values > this = white detected; adjust based on your calibration data, e.g., if white ~1000, black ~0)
+bool nextTurnRight = false;  // Start with right turn
+int turnCount = 0;  // Track number of V-turns
+unsigned long turnDuration = 920;  // ms for approx. 250 degrees pivot turn; calculated assuming typical robot (wheelbase ~10cm, effective turn speed ~172 deg/s at baseSpeed=170); tune empirically by testing on your hardware
+bool ignoreDistraction = false;  // Flag to enter ignore mode at sCount == 10
+int ignoreSpeed = 150;  // Speed during ignore mode (slightly lower for control; adjust as needed)
+int sharpTurnThreshold = 1500;  // Error threshold to detect 90-degree turn (e.g., |error| > 2000 means sharp deviation)
+int asdf[18] = {0, 0, 1, 0, 0, 
+                1, 1, 0, 1, 0, 
+                1, 1, 0, 0, 1, 0, 0, 0} ;
+int asdf_index = 0; 
+int sl = 100;
+
+
+bool debug = false;
+void setup() {
+  // Initialize serial communication
+  if(debug){
+    Serial.begin(9600);
+  }
+
+  // Configure QTR sensors
+  qtr.setTypeRC();
+  qtr.setSensorPins((const uint8_t[]){ 8, 9, 10, 11, 12, 13 }, SensorCount);
+  delay(500);
+
+  // Calibrate sensors
+  unsigned long startTime = millis();
+
+  for (uint16_t i = 0; i < 400; i++) { //400 ticks is about 10 seconds
+    qtr.calibrate();
+  }
+
+  unsigned long endTime = millis(); // Record end time
+  unsigned long calibrationDuration = endTime - startTime; // Calculate duration
+
+  if(debug){
+    Serial.print("Calibration took "); // Calibration took 10642 ms or 10 seconds
+    Serial.print(calibrationDuration);
+    Serial.println(" ms");
+
+    // Print calibration data
+  for (uint8_t i = 0; i < SensorCount; i++) {
+    Serial.print(qtr.calibrationOn.minimum[i]);
+    Serial.print(' ');
+  }
+  Serial.println();
+  for (uint8_t i = 0; i < SensorCount; i++) {
+    Serial.print(qtr.calibrationOn.maximum[i]);
+    Serial.print(' ');
+  }
+  Serial.println();
+  }
+
+  // start the time trial
+  timeAttack = millis();
+  // count = 0;
+}
+
+int checkStatus(uint16_t position, float correction, bool lineDetected) {
+  
+  if (straightCounter > 30) {
+    return 1; // Switch to tStraight
+  }
+  return 0; // Default to standard (removed extreme position check as vTurn now handles line loss)
+  
+  if (!lineDetected) {
+    return 2; // Trigger vTurn on all black (line lost)
+  }
+  // Detect long straight (using existing counter)
+  
+}
+
+void vTurn() {
+  // Increment turn count
+  turnCount++;
+  if (debug) {
+    Serial.print("V-turn triggered (250 deg), count: ");
+    Serial.print(turnCount);
+    Serial.print(", direction: ");
+    Serial.println(nextTurnRight ? "right" : "left");
+  }
+
+  // Perform fixed-angle pivot turn
+  if (asdf[asdf_index] == 1) {
+    motor1.drive(baseSpeed);   // Left forward
+    motor2.drive(-baseSpeed);  // Right backward -> turn right
+  } else {
+    motor1.drive(-baseSpeed);  // Left backward
+    motor2.drive(baseSpeed);   // Right forward -> turn left
+  }
+
+  asdf_index++;
+  
+  while(checkLine() == false){
+    delay(10);
+  }
+
+  // Stop motors after turn
+  motor1.drive(0);
+  motor2.drive(0);
+
+  // Check if line is rediscovered after turn
+  qtr.readLineWhite(sensorValues);
+  int maxSensor = 0;
+  for (uint8_t i = 0; i < SensorCount; i++) {
+    if (sensorValues[i] > maxSensor) maxSensor = sensorValues[i];
+  }
+  if (maxSensor > lineThreshold) {
+    if (debug) {
+      Serial.println("White line rediscovered after 250 deg turn!");
+    }
+    // Brief forward burst to center on line
+    motor1.drive(baseSpeed / 2);
+    motor2.drive(baseSpeed / 2);
+    delay(100);  // Adjust for alignment
+  } else {
+    if (debug) {
+      Serial.println("Warning: Line not found after turn - may need duration tuning or forward adjustment");
+    }
+    // Optional: Add fallback, e.g., small forward or reverse to search
+    // motor1.drive(baseSpeed / 2);
+    // motor2.drive(baseSpeed / 2);
+    // delay(200);  // Uncomment if needed for extra search
+  }
+
+  // Toggle direction for next V-turn (alternates right/left)
+  nextTurnRight = !nextTurnRight;
+
+  // Reset PID terms after maneuver
+  integral = 0;
+  lastError = 0;
+}
+
+void tStraight() {
+  // Read position
+  uint16_t position = qtr.readLineWhite(sensorValues);
+  float error = position - 2500.0;
+  
+  // Check for sCount == 10 to enable ignore mode
+  if ( !ignoreDistraction) {
+    ignoreDistraction = true;
+    if (debug) {
+      Serial.println("Entering ignore distraction mode at sCount 10 (for T)");
+    }
+  }
+  
+  float correction;
+  if (ignoreDistraction) {
+    // Ignore sensors: force straight drive with no correction
+    integral += error;
+    float derivative = error - lastError;
+    correction = Kp * error + Ki * integral + Kd * derivative;
+
+    // Monitor for next 90-degree turn (sharp error or extreme position)
+    // if (abs(correction) > sl || position < 500 || position > 4500) {
+    //   ignoreDistraction = false;  // Exit ignore mode
+    //   if (debug) {
+    //     Serial.println("Detected 90-degree turn - exiting ignore mode");
+    //   }
+    //   // Optional: Trigger vTurn or standard immediately after detection
+    //   // For now, fall through to apply correction below
+
+    //   status=2; //vTurn
+    //     motor1.drive(0);
+    //     motor2.drive(0);
+    //   return ;
+    // }
+  } else {
+    // Normal turbo straight: reduced correction, boosted speed
+    correction = Kp * error * 0.8; // Soften Kp for straights
+  }
+  
+  int leftSpeed = baseSpeed + 30 + correction; // Boost base speed
+  int rightSpeed = baseSpeed + 30 - correction;
+  
+  // During ignore, override to equal speeds
+  if (ignoreDistraction) {
+    leftSpeed = ignoreSpeed;
+    rightSpeed = ignoreSpeed;
+  }
+  
+  // Constrain to prevent overspeed
+  leftSpeed = constrain(leftSpeed, -maxSpeed, maxSpeed);
+  rightSpeed = constrain(rightSpeed, -maxSpeed, maxSpeed);
+  
+  motor1.drive(leftSpeed);
+  motor2.drive(rightSpeed);
+  
+  lastError = error;
+  
+  if (debug) {
+    Serial.println(ignoreDistraction ? "Ignore mode active" : "Turbo straight mode");
+  }
+}
+
+void standard(){
+  // Read line position (0 to 5000, center is 2500)
+  uint16_t position = qtr.readLineWhite(sensorValues);
+
+
+  if (debug) {
+
+  for (uint8_t i = 0; i < SensorCount; i++) {
+    Serial.print(sensorValues[i]);
+    Serial.print(" ");
+
+  }
+    Serial.println("");
+  }
+
+  // Calculate error (deviation from center line, 2500 is center)
+  float error = position - 2500.0;
+  // if error = positive then make it turn right
+  // when negative value then turn left
+
+  // Calculate PID terms
+  integral += error;
+  float derivative = error - lastError;
+  float correction = Kp * error + Ki * integral + Kd * derivative;
+
+  // Calculate motor speeds
+  //correction=0;
+  // correction if positive turn right if negative turn left
+  int leftSpeed = baseSpeed + correction;
+  int rightSpeed = baseSpeed - correction;
+
+  // count++;
+  // if(debug){
+  //   Serial.print("Count: ");
+  //          Serial.println(count);
+  // }
+
+  if(abs(correction) < sl){ // correction --> 100 is the current best stat
+    straightCounter++; // Increment straight line duration counter
+    if (straightCounter > 30) { // Check if straight line persists for 60 iterations
+      if (!wasStraight) { // Transition to a new straight line
+        sCount++; // Increment straight line counter
+        wasStraight = true; // Update state
+        if (debug) {
+          Serial.print("Straight line detected, count: ");
+          Serial.println(sCount);
+        }
+      }
+      // Don't reset counter here; let checkStatus handle mode switch
+    }
+  } else {
+    straightCounter = 0; // Reset counter when not on straight line
+    wasStraight = false; // Reset straight line state
+    if (ignoreDistraction) {
+      ignoreDistraction = false;  // Reset ignore if we exit straight
+      if (debug) {
+        Serial.println("Reset ignoreDistraction in standard mode");
+      }
+    }
+  } 
+
+  if(debug){
+      Serial.println(correction);
+  }
+
+
+
+  // Constrain motor speeds
+  leftSpeed = constrain(leftSpeed, -maxSpeed, maxSpeed);
+  rightSpeed = constrain(rightSpeed, -maxSpeed, maxSpeed);
+
+  // if(count > 500){
+  //   leftSpeed = 0;
+  //   rightSpeed = 0;
+  // }
+
+  if(sCount == 10){
+    
+    status=1;//tstraight
+  }
+
+  // Drive motors
+  motor1.drive(leftSpeed);
+  motor2.drive(rightSpeed);
+
+  // Update last error for derivative term
+  lastError = error;
+}
+
+bool checkLine(){
+   qtr.readLineWhite(sensorValues);
+  for (uint8_t i = 0; i < SensorCount; i++) {
+    if (sensorValues[i] < lineThreshold) 
+      return true;
+  }
+  return false;
+}
+
+// white - no serial - pid
+void loop() {
+  // Read position once for efficiency
+  uint16_t position = qtr.readLineWhite(sensorValues);
+  
+  // Calculate max sensor value and line detection
+  int maxSensor = 0;
+  for (uint8_t i = 0; i < SensorCount; i++) {
+    if (sensorValues[i] > maxSensor) maxSensor = sensorValues[i];
+  }
+  bool lineDetected = (checkLine());
+  
+  // Calculate correction (needed for checkStatus)
+  float error = position - 2500.0;
+  float correction = Kp * error + Ki * integral + Kd * (error - lastError); // Simplified
+  
+  //int s = checkStatus(position, correction, lineDetected);
+
+
+  if(status == 0){
+    standard();
+    // if(s == 1){
+    //   status = 1;
+    // }
+  } else if(status == 1){
+    tStraight();
+    // if(s == 2){
+    //   status = 2;
+    // }
+  } else if(status == 2){
+    // vTurn();
+  }
+
+  delay(10);  // Short delay for stability
+}
+
