@@ -71,6 +71,7 @@
 | 2025-07-17 | Found out what the problem is for our pin, qtr sensors and motors | So before we used all the pins in the digital area, but pin 0 and pin 1 are a bit different, if it is used with seiral then there will be signal interference and can lead to problems such as slower motor speeds and more. And the position error that could't calculate negative numbers is because of a slight bug |
 | 2025-07-31 | Problem : Straight line / distraction | Potential Solution : Calculate the straight lines until it is the one --> ignore the distraction and move foward |
 | 2025-08-20 | Added vTurn, vStraight and more functions so that the bot can deal with different turns | |
+| 2025-08-30 | Competition day | At the competition day, problems emerged that we never thought before, first of all, the traction problem, so we practiced on a surface that had more grip, and when we were practicing everything went fine, but the competition track was 3D printed, the plastic made it very slippery, resulting in our robot not having enough traction and making our bot slip off the elevated track. Another problem was that our motor wasn't powerful enough to have the car climb fast up the slope, our bot struggled to go up steep slopes. Our solution was to buy a new type of robot and modify it our selves, and next time we will finish the race effortlessly. |
 
 - we simplified the code to make both motors move forward at a fixed speed (e.g., PWM 150).
 - One assay, Roswell, we checked the motor voltages with a multimeter, and they’re the same.
