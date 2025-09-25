@@ -72,6 +72,7 @@
 | 2025-07-31 | Problem : Straight line / distraction | Potential Solution : Calculate the straight lines until it is the one --> ignore the distraction and move foward |
 | 2025-08-20 | Added vTurn, vStraight and more functions so that the bot can deal with different turns | |
 | 2025-08-30 | Competition day | At the competition day, problems emerged that we never thought before, first of all, the traction problem, so we practiced on a surface that had more grip, and when we were practicing everything went fine, but the competition track was 3D printed, the plastic made it very slippery, resulting in our robot not having enough traction and making our bot slip off the elevated track. Another problem was that our motor wasn't powerful enough to have the car climb fast up the slope, our bot struggled to go up steep slopes. Our solution was to buy a new type of robot and modify it our selves, and next time we will finish the race effortlessly. |
+| 2025-09-20 | Purchased some new parts of the V2 bot we will use, since last time my robot cannot even go up the slope, we got bigger wheels for better grip, more powerful motors that gives more torque, better far-red sensors that react more quickly. | The new robot passed through the last part of the track perfectly, the turing is sharper than ever, and blazed through all the tight corners |
 
 - we simplified the code to make both motors move forward at a fixed speed (e.g., PWM 150).
 - One assay, Roswell, we checked the motor voltages with a multimeter, and they’re the same.
